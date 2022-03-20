@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+
+<!-- To view in browser: python3 -m http.server 8080 & -->
+<!-- Then visit http://0.0.0.0:8080/interactive.html in your browser -->
+<head>
+  <link rel="stylesheet" href="styles.css">
+  <title>Games Rating: 2015 - 2019</title>
+  <meta charset="utf-8">
+  <style>
+    /* <!-- define CSS rules --> */
+  </style>
+</head>
+
+<body>
+
+
+
+  <script type="text/javascript" src="../lib/d3.v5.min.js"></script>
+  <script type="text/javascript" src="../lib/d3-dsv.min.js"></script>
+
+  <!-- <script type="text/javascript" src="d3.v5.min.js"></script>
+  <script type="text/javascript" src="d3-dsv.min.js"></script> -->
+
+  <!-- Example hiding an element -->
+  <!-- <g id="" style"display:none;" /> -->
+
+  <!-- Example of styling an element -->
+  <!-- svg_element.style()-->
+
+  <script>
+    // define the dimensions and margins for the line chart
+    // Use the same Margin Convention from HW1 Q3: https://poloclub.github.io/cse6242-2022spring-online/hw1/8rEHLaYmr9 _margin_convention.pdf to layout your graph
+
+
+    // define the dimensions and margins for the bar chart
+
+
+    // append svg element to the body of the page
+    // set dimensions and position of the svg element
+    var margin = {top: 20, right: 10, bottom: 20, left: 10};
+    var width = 960 - margin.left - margin.right,
+      height = 500 - margin.top - margin.bottom;
+
+    let svg_line_chart = d3
+      .select("body")
+      .append("svg")
+      .attr("id", "line_chart")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+
+
+    let g_container = svg_line_chart.append("g")
+      .attr("id", "container")
+      .attr("transform",
+        "translate(" + margin.left + "," + margin.top + ")");
+
+    // Fetch the data
+	var pathToCsv = "average-rating.csv";
+  let data_to_process = {2015: [], 2016: [], 2017: [], 2018: [], 2019: []}
+  let data_with_user_info = []
+
+
+    d3.dsv(",", pathToCsv, function (d) {
+      
+      if(2014 < d.year && d.year < 2020 && d.average_rating){
+        let interim = d.year
+        data_to_process[interim].push(Math.floor(d.average_rating))
+      }
+      // return data_to_process
+      return [data_to_process, d]
+        
+        // format data attributes if required
+      
+    }).then(function (data) {
+      console.log(data[7484][1]); // you should see the data in your browser's developer tools console
+      let dataset_to_manipulate = data[0][0]
+
+      function count_ratings(year){
+        let ratings = [0,1,2,3,4,5,6,7,8,9]
+        let data_2015 = {counts: [], rating: ratings}
+        counts = {}
+
+        for (count_number in ratings){
+          let rating_count = 0
+          dataset_to_manipulate[year].forEach(eachData => {
+            if(eachData == count_number){
+              rating_count++
+            }
+          })
+          counts[count_number] = rating_count
+          }
+
+        return counts
+      }
+
+      counts_2015 = count_ratings(2015)
+
+
+      function consolidate_ratings(count_ratings_year){
+        let final_count_slice_year = []
+        let counts_value_array = Object.values(count_ratings_year)
+
+        Object.keys(count_ratings_year).forEach(function(element, index) {
+          final_count_slice_year.push({
+            "rating": parseInt(element),
+            "count": parseInt(counts_value_array[index]),
+          })
+        });
+
+        return final_count_slice_year
+      }
+
+      counts_2016 = count_ratings(2016)
+      counts_2017 = count_ratings(2017)
+      counts_2018 = count_ratings(2018)
+      counts_2019 = count_ratings(2019)
+
+      final_count_slice_2015 = consolidate_ratings(counts_2015)
+      final_count_slice_2016 = consolidate_ratings(counts_2016)
+      final_count_slice_2017 = consolidate_ratings(counts_2017)
+      final_count_slice_2018 = consolidate_ratings(counts_2018)
+      final_count_slice_2019 = consolidate_ratings(counts_2019)
+
+
+      final_count_slice_line = [
+        {
+        "id": 2015,
+        "values": final_count_slice_2015
+        },{
+        "id": 2016,
+        "values": final_count_slice_2016
+        },{
+        "id": 2017,
+        "values": final_count_slice_2017
+        },{
+        "id": 2018,
+        "values": final_count_slice_2018
+        },{
+        "id": 2019,
+        "values": final_count_slice_2019
+        }
+      ]
+      
+      /* Create bar plot using data from csv */
+      
+      const xScale = d3.scaleLinear().rangeRound([75, width - 175])
+      const yScale = d3.scaleLinear().rangeRound([height - 20, 0])
+
+      xScale.domain([(0), d3.max(final_count_slice_line, (c)=>{
+        return d3.max(c.values, (d)=>{
+          return d.rating
+        })
+      })])
+      yScale.domain([(0), d3.max(final_count_slice_line, (c)=>{
+        return d3.max(c.values, (d)=>{
+          return d.count
+        })
+      })])
+
+
+
+
+      // xScale.domain([x_domain_low,x_domain_high])
+      // yScale.domain([y_domain_low, y_domain_high])
+
+      const yaxis = d3.axisLeft()
+        .scale(yScale)
+      const xaxis = d3.axisBottom()
+        .scale(xScale)
+
+
+      const line = d3.line()
+        .x((d)=>{return xScale(d.rating)})
+        .y((d)=>{return yScale(d.count)})
+
+      var color = d3.scaleOrdinal(d3.schemeCategory10);
+      let color_id = 0
+
+
+
+      var g_lines = g_container.append('g')
+        .attr("id", 'lines')
+
+
+      const lines = g_lines.selectAll("lines")
+        // .data(final_count_slice_2015)
+        .data(final_count_slice_line)
+        .enter()
+        .append("g")
+        .attr("class", (d)=>{
+          return "lines-g"
+        })
+
+
+       // addling the lines
+       lines.append("path")
+          .attr("class", "path-a")
+          .attr("d", (d)=>{
+            if(d.values){
+              return line(d.values)
+            }
+            })
+          .style("fill", "none")
+          .style("stroke", ()=>{
+            color_id = color_id + 1
+            return color(color_id - 1)
+          })
+          .style("stroke-dasharray", 0)
+
+        let distance_between = 0
+
+      var x_axis_lines = g_container.append("g")
+        .attr("id", "x-axis-lines")
+        .attr("transform", "translate(0," + (height - 20)  + ")")
+        .call(xaxis)
+
+      var y_axis_lines = g_container.append("g")
+        .attr("id", "y-axis-lines")
+        .attr("transform", "translate(75,0)")
+        .call(yaxis)
+
+      var circles_lines = g_container.append('g')
+        .attr("id", "circles")
+
+
+      color_id = 0
+      let length = 7484
+
+      function most_rated_games(input_year, input_rating){
+        data_given_year = []
+        let users_rated_arr = []
+
+        for(let i=0; i< length; i++){
+          let each_data_entry = data[i][1]
+          // get all entries for the given year
+          if(parseInt(each_data_entry.year) === input_year && Math.floor(each_data_entry.average_rating) === input_rating && each_data_entry.average_rating){
+            data_given_year.push(each_data_entry)
+            users_rated_arr.push(each_data_entry.users_rated)
+          }
+        }
+        let maximum_storing = []
+        for (let i=0; i< 5; i++){
+          maximum_value = Math.max(...users_rated_arr)
+          index_maximum = users_rated_arr.indexOf(maximum_value.toString())
+          maximum_storing.push(maximum_value)
+          users_rated_arr.splice(index_maximum, 1)
+        }
+        name_user_rated_data = []
+        for (users_rated_value of maximum_storing){
+          data_given_year.forEach(each_game_element => {
+          if(parseInt(each_game_element.users_rated) == parseInt(users_rated_value)){
+            object_to_push = {
+              "name": each_game_element.name,
+              "users_rated": each_game_element.users_rated
+            }
+            name_user_rated_data.push(object_to_push)
+          }
+          
+          });
+        }
+
+        return name_user_rated_data
+      }
+
+
+      var circles_2015 = circles_lines.selectAll(".dot-2015")
+        .data(final_count_slice_line[0].values)
+        .enter()
+        .append('circle')
+        .attr('class', (d)=>{
+          return "dot-2015"
+        })
+        .attr("cx", (d)=>{
+          return xScale(d.rating)
+        })
+        .attr("cy", (d)=>{
+          return yScale(d.count)
+        })
+        .attr("r", 5)
+        .style("fill", ()=>{
+            return color(color_id)
+          })
+          .on('mouseover', (d)=>{
+            d3.select(event.currentTarget).style("fill", "pink")
+            d3.select(event.currentTarget).attr("r", 15)
+
+
+            let name_user_data = most_rated_games(2015, d.rating)
+            let reorder_name_user_data = []
+            for (let iterative = name_user_data.length; iterative >=0; iterative--){
+              if(name_user_data[iterative]){
+                reorder_name_user_data.push(name_user_data[iterative])
+              }
+            }
+        
+            handle_barchart(reorder_name_user_data, 2015, d.rating)
+          })
+          .on('mouseout', ()=>{
+            handle_mouse_event(0)
+          })          
+      
+      color_id++
+      var circles_2016 = circles_lines.selectAll(".dot-2016")
+        .data(final_count_slice_line[1].values)
+        .enter()
+        .append('circle')
+        .attr('class', (d)=>{
+          return "dot-2016"
+        })
+        .attr("cx", (d)=>{
+          return xScale(d.rating)
+        })
+        .attr("cy", (d)=>{
+          return yScale(d.count)
+        })
+        .attr("r", 5)
+        .style("fill", ()=>{
+            return color(color_id)
+          })
+          .on('mouseover', (d)=>{
+            d3.select(event.currentTarget).style("fill", "pink")
+            d3.select(event.currentTarget).attr("r", 15)
+
+            let name_user_data = most_rated_games(2016, d.rating)
+            let reorder_name_user_data = []
+            for (let iterative = name_user_data.length; iterative >=0; iterative--){
+              if(name_user_data[iterative]){
+                reorder_name_user_data.push(name_user_data[iterative])
+              }
+            }        
+            handle_barchart(reorder_name_user_data, 2016, d.rating)
+          })
+          .on('mouseout', ()=>{
+            handle_mouse_event(1)
+          })
+
+      color_id++
+      var circles_2017 = circles_lines.selectAll(".dot-2017")
+        .data(final_count_slice_line[2].values)
+        .enter()
+        .append('circle')
+        .attr('class', (d)=>{
+          return "dot-2017"
+        })
+        .attr("cx", (d)=>{
+          return xScale(d.rating)
+        })
+        .attr("cy", (d)=>{
+          return yScale(d.count)
+        })
+        .attr("r", 5)
+        .style("fill", ()=>{
+            return color(color_id)
+          })
+        .on('mouseover', (d)=>{
+          d3.select(event.currentTarget).style("fill", "pink")
+          d3.select(event.currentTarget).attr("r", 15)
+
+          let name_user_data = most_rated_games(2017, d.rating)
+          let reorder_name_user_data = []
+          for (let iterative = name_user_data.length; iterative >=0; iterative--){
+            if(name_user_data[iterative]){
+              reorder_name_user_data.push(name_user_data[iterative])
+            }
+          }      
+          handle_barchart(reorder_name_user_data, 2017, d.rating)
+        })
+        .on('mouseout', ()=>{
+          handle_mouse_event(2)
+        })
+
+
+      color_id++
+      var circles_2018 = circles_lines.selectAll(".dot-2018")
+        .data(final_count_slice_line[3].values)
+        .enter()
+        .append('circle')
+        .attr('class', (d)=>{
+          return "dot-2018"
+        })
+        .attr("cx", (d)=>{
+          return xScale(d.rating)
+        })
+        .attr("cy", (d)=>{
+          return yScale(d.count)
+        })
+        .attr("r", 5)
+        .style("fill", ()=>{
+            return color(color_id)
+          })
+        .on('mouseover', (d)=>{
+          d3.select(event.currentTarget).style("fill", "pink")
+          d3.select(event.currentTarget).attr("r", 15)
+
+          let name_user_data = most_rated_games(2018, d.rating)
+          let reorder_name_user_data = []
+          for (let iterative = name_user_data.length; iterative >=0; iterative--){
+            if(name_user_data[iterative]){
+              reorder_name_user_data.push(name_user_data[iterative])
+            }
+          }      
+          handle_barchart(reorder_name_user_data, 2018, d.rating)
+        })
+        .on('mouseout', ()=>{
+          handle_mouse_event(3)
+        })
+
+
+      color_id++
+      var circles_2019 = circles_lines.selectAll(".dot-2019")
+        .data(final_count_slice_line[4].values)
+        .enter()
+        .append('circle')
+        .attr('class', (d)=>{
+          return "dot-2019"
+        })
+        .attr("cx", (d)=>{
+          return xScale(d.rating)
+        })
+        .attr("cy", (d)=>{
+          return yScale(d.count)
+        })
+        .attr("r", 5)
+        .style("fill", ()=>{
+            return color(color_id)
+          })
+        .on('mouseover', (d)=>{
+          d3.select(event.currentTarget).style("fill", "pink")
+          d3.select(event.currentTarget).attr("r", 15)
+
+          let name_user_data = most_rated_games(2019, d.rating)
+          let reorder_name_user_data = []
+          for (let iterative = name_user_data.length; iterative >=0; iterative--){
+            if(name_user_data[iterative]){
+              reorder_name_user_data.push(name_user_data[iterative])
+            }
+          }      
+          handle_barchart(reorder_name_user_data, 2019, d.rating)
+        })
+        .on('mouseout', ()=>{
+          handle_mouse_event(4)
+        })
+
+      g_container.append('text')
+        .attr('id', 'line_chart_title')
+        .text(()=>{
+          return "Board games by Rating 2015-2019"
+        })
+        .attr('x', 650)
+        .attr('y', 0)
+
+      g_container.append('text')
+        .attr('id', 'credit')
+        .text(()=>{
+          return "ntalukder6"
+        })
+        .attr('x', 650)
+        .attr('y', 20)
+
+      var g_legend = g_container.append('g')
+        .attr('id', 'legend')
+        
+      let years_list = [2015, 2016, 2017, 2018, 2019]
+
+      color_id = 0
+      distance_between = 20
+      g_legend.selectAll('.circles-label')
+        .data(years_list)
+        .enter()
+        .append('circle')
+        .attr('class', 'circles-label')
+        .style('fill', function(){
+            color_id = color_id + 1
+            return color(color_id - 1)
+        })
+        .attr('cx', 725)
+        .attr('cy', function(){
+          distance_between = distance_between + 20
+          return 64 + (distance_between - 20)
+        })
+        .attr('r', 7)
+
+
+      distance_between = 0
+      g_legend.selectAll(".text-label")
+        .data(years_list)
+        .enter()
+        .append('text')
+        .attr("class", "text-label")
+        .text(function(d){
+            return d
+          })
+          .attr("transform", function(d){
+            return "translate(40,40)"
+          })
+          .attr("x", 700)
+          .attr("y", function(){
+            distance_between = distance_between + 20
+            return 49 + (distance_between - 20)
+          }) 
+
+        g_container.append('text')
+          .attr('id', 'x-axis-label')
+          .text('Rating')
+          .attr('x', 450)
+          .attr('y', 470)
+
+        
+        g_container.append('text')
+          .attr('id', 'y-axis-label')
+          .text('Count')
+          .attr("transform", "translate(20,275)rotate(-90)")
+
+
+        // let div_bar_chart = d3
+        //   .select("body")
+        //   .append("div")
+        //   .attr("id", "bar_chart_title")
+        //   .attr("width", width + margin.left + margin.right)
+        //   .attr("height", width + margin.top + margin.bottom)
+        //   .append('text')
+        //   .text(`Top 5 most rated games for year 2015 with rating 2`)
+        //   .style('visibility', 'visible')
+        //   // .attr("transform", "translate(400,400)")
+        //   // .attr("transform", function(){
+        //   //   return "translate(40,40)"
+        //   // })
+          
+
+
+        // let svg_bar_chart = d3
+        //   .select("body")
+        //   .append("svg")
+        //   .attr("id", "bar_chart")
+        //   .attr("width", width + margin.left + margin.right)
+        //   .attr("height", height + margin.top + margin.bottom)
+        //   .style('visibility', 'visible')
+
+        // let g_container_2 = svg_bar_chart.append('g')
+        //     .attr('id', 'container_2')
+
+        // let g_bars = g_container_2.append('g')
+        //   .attr('id', 'bars')
+
+        // g_x_axis_bars = g_container_2.append('g')
+        //   .attr('id', 'x-axis-chart')
+                
+
+        // g_y_axis_bars = g_container_2.append('g')
+        //   .attr('id', 'y-axis-chart')
+
+
+
+        function handle_barchart(name_user_data, year_provided, rating_provided){
+          if(name_user_data.length > 1){
+            let div_bar_chart = d3
+              .select("body")
+              .append("div")
+              .attr("id", "bar_chart_title")
+              .attr("width", width + margin.left + margin.right)
+              .attr("height", width + margin.top + margin.bottom)
+              .append('text')
+              .text(`Top 5 most rated games for year ${year_provided} with rating ${rating_provided}`)
+              // .attr("transform", "translate(400,400)")
+              // .attr("transform", function(){
+              //   return "translate(40,40)"
+              // })
+              
+
+
+              let svg_bar_chart = d3
+                .select("body")
+                .append("svg")
+                .attr("id", "bar_chart")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+
+
+            let g_container_2 = svg_bar_chart.append('g')
+              .attr('id', 'container_2')
+
+            let g_bars = g_container_2.append('g')
+              .attr('id', 'bars')
+
+              const xScale_chart = d3.scaleLinear().rangeRound([200, width - 175])
+              const yScale_chart = d3.scaleBand().rangeRound([height - 20, 0])
+
+
+
+              xScale_chart.domain([(0), name_user_data[(name_user_data.length - 1)].users_rated])
+
+              yScale_chart.domain(name_user_data.map(function(d){
+                return d.name.substr(0, 10)
+              }))
+              const yaxis_chart = d3.axisLeft()
+                .scale(yScale_chart)
+              const xaxis_chart = d3.axisBottom()
+                .scale(xScale_chart)
+
+              var rects_chart = g_bars.selectAll('.bar_in_bar_chart')
+                .data(name_user_data)
+                .enter()
+                .append("rect")
+                .attr('class', ()=>{
+                  return 'bar_in_bar_chart'
+                })
+                .attr('x', xScale_chart(0))
+                .attr('y', (d)=>{
+                  return (yScale_chart(d.name.substr(0, 10)) + 26)
+                })
+                .attr('width', (d)=>{
+                  return (xScale_chart(d.users_rated) - 200)
+                })
+                .attr("fill", "#69b3a2")
+                .attr("height",'40')
+                
+
+              g_x_axis_bars = g_container_2.append('g')
+                .attr('id', 'x-axis-chart')
+                .attr("transform", "translate(0," + (height - 20)  + ")")
+                .call(xaxis_chart)
+
+              g_y_axis_bars = g_container_2.append('g')
+                .attr('id', 'y-axis-chart')
+                .attr("transform", "translate(200,0)")
+                .call(yaxis_chart)
+
+
+          }
+        }
+
+        function handle_mouse_event(color_id){
+          d3.select('svg#bar_chart').remove()
+          d3.select('div#bar_chart_title').remove()
+          d3.select(event.currentTarget).style("fill", color(color_id))
+          d3.select(event.currentTarget).attr("r", 5)
+        }
+
+        
+
+        
+
+
+    }).catch(function (error) {
+      console.log(error);
+    });
+
+
+  </script>
+
+</body>
